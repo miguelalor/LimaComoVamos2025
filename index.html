@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lima Cómo Vamos 2025</title>
+<meta name="description" content="Dashboard de la encuesta de percepción sobre calidad de vida urbana Lima Cómo Vamos 2025.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@600;700&family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Plaza Cívica tokens, mapped to the names the dashboard page uses. */
+:root {
+  --color-bg: #FCF8F2; --color-panel: #FFFFFF; --color-fg: #222222; --color-fg-muted: #666E75;
+  --color-border-line: #E4E7EA; --color-ok: #1E7F5C; --color-warn: #B8791B; --color-bad: #B4372E;
+  --chart-1: #1D92DA; --chart-2: #08294A; --chart-3: #8A939B; --chart-4: #105C8B;
+  --font-anthropic-sans: Inter, 'Helvetica Neue', Arial, sans-serif;
+  --font-anthropic-serif: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --cds-font-size-body: 15px; --cds-radius: 14px;
+  --cds-surface-popover: #FFFFFF; --cds-border: #C7CDD2; --cds-shadow-popover: 0 10px 30px rgba(8,41,74,.12);
+  --cds-text-secondary: #666E75; --cds-dur-slow: 360ms; --cds-ease-out: cubic-bezier(.2,.6,.3,1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --color-bg: #061D35; --color-panel: #08294A; --color-fg: #FCF8F2; --color-fg-muted: #A9C0D6;
+  --color-border-line: #1C4468; --chart-1: #3FA3DF; --chart-2: #C9D6E3; --chart-3: #6B7C8D; --chart-4: #A5D3F0;
+  --cds-surface-popover: #0C3862; --cds-border: #1C4468; --cds-shadow-popover: 0 10px 30px rgba(0,0,0,.4);
+  --cds-text-secondary: #A9C0D6; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --color-bg: #061D35; --color-panel: #08294A; --color-fg: #FCF8F2; --color-fg-muted: #A9C0D6;
+  --color-border-line: #1C4468; --chart-1: #3FA3DF; --chart-2: #C9D6E3; --chart-3: #6B7C8D; --chart-4: #A5D3F0;
+  --cds-surface-popover: #0C3862; --cds-border: #1C4468; --cds-shadow-popover: 0 10px 30px rgba(0,0,0,.4);
+  --cds-text-secondary: #A9C0D6; color-scheme: dark;
+}
+html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
+#dash-root { max-width: 1200px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 900px) { #dash-root { padding-left: 40px; padding-right: 40px; } }
+.dash-select { font: inherit; font-size: 14px; color: var(--color-fg); background-color: var(--color-panel);
+  border: 1px solid var(--cds-border); border-radius: 10px; padding: 7px 34px 7px 12px; appearance: none; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 17px) 55%, calc(100% - 12px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+.dash-skeleton { position: relative; color: transparent !important; }
+.dash-skeleton:empty { background: color-mix(in srgb, var(--color-fg) 6%, transparent); border-radius: 6px; }
+</style>
+</head>
+<body>
+<script>
+// Minimal stand-in for the Claude dashboard runtime, enough to run page.html on its own.
+window.dash = (() => {
+  const store = { respuestas: { status: 'loading', data: [] } };
+  const draws = new Map();
+  const run = (name) => {
+    const fn = draws.get(name);
+    if (!fn) return;
+    document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => {
+      if (el.closest('[hidden]')) return;
+      try { fn(el); } catch (e) { console.error(e); }
+    });
+  };
+  const runAll = () => draws.forEach((_, n) => run(n));
+  return {
+    colors: ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'],
+    data: (id) => store[id] || { status: 'missing', data: [] },
+    draw: (name, fn) => {
+      if (!fn) return run(name);
+      draws.set(name, typeof fn === 'function' ? fn : (el) => fn.update(el, fn.mount && fn.mount(el)));
+    },
+    onData: (fn) => fn(),
+    setLink: (name) => { try { history.replaceState(null, '', '#' + name); } catch (e) {} },
+    _start: () => {
+      runAll();
+      fetch('data/respuestas.json')
+        .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then((j) => { store.respuestas = { status: 'ok', data: j.rows || j }; })
+        .catch(() => { store.respuestas = { status: 'error', data: [] }; })
+        .finally(runAll);
+    }
+  };
+})();
+</script>
+<div id="dash-root">
+<meta name="dash-one-writer">
+<style>
+.lcv { display: flex; flex-direction: column; gap: 40px; font-family: var(--font-anthropic-sans); color: var(--color-fg); font-size: var(--cds-font-size-body); line-height: 1.55; }
+.lcv h1, .lcv h2, .lcv h3 { font-family: var(--font-anthropic-serif); color: var(--color-fg); margin: 0; text-wrap: balance; }
+.lcv p { margin: 0; }
+.lcv-head { display: flex; flex-direction: column; gap: 12px; max-width: 760px; padding-top: 8px; }
+.lcv-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--color-fg-muted); }
+.lcv-title { font-size: clamp(30px, 4.4vw, 48px); line-height: 1.08; font-weight: 700; letter-spacing: -0.02em; }
+.lcv-lead { font-size: clamp(16px, 1.6vw, 19px); color: var(--color-fg); max-width: 700px; }
+.lcv-lead b { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.lcv-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 16px; }
+.lcv-kpi { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 20px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.lcv-kpi-label { font-size: 13px; font-weight: 600; color: var(--color-fg); }
+.lcv-kpi-value { font-family: var(--font-anthropic-serif); font-weight: 700; font-size: clamp(34px, 3.6vw, 44px); line-height: 1.05; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.lcv-kpi-note { font-size: 13px; color: var(--color-fg-muted); }
+.lcv-kpi-range { font-size: 13px; color: var(--color-fg-muted); border-top: 1px solid var(--color-border-line); padding-top: 8px; margin-top: auto; min-height: 1.6em; }
+.lcv-kpi-range b { color: var(--color-fg); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.lcv-controls { position: sticky; top: 0; z-index: 6; background: var(--color-bg); border-bottom: 1px solid var(--color-border-line); padding: 12px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; }
+.lcv-filter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.lcv-filter label { font-size: 13px; font-weight: 600; }
+.lcv-filter .dash-select { min-width: 210px; max-width: 100%; }
+.lcv-nav { display: flex; flex-wrap: wrap; gap: 6px; }
+.lcv-nav a { font-size: 13px; font-weight: 600; color: var(--color-fg); text-decoration: none; padding: 5px 12px; border: 1px solid var(--color-border-line); border-radius: 999px; background: var(--color-panel); transition: border-color .12s, color .12s; }
+.lcv-nav a:hover { border-color: var(--color-fg-muted); }
+.lcv-nav a:focus-visible, .lcv .dash-select:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.lcv-controls-note { flex-basis: 100%; font-size: 12px; color: var(--color-fg-muted); display: flex; gap: 6px 16px; flex-wrap: wrap; align-items: center; }
+.lcv-key { display: inline-flex; align-items: center; gap: 6px; }
+.lcv-key-bar { width: 18px; height: 8px; border-radius: 2px; display: inline-block; }
+.lcv-key-tick { width: 2px; height: 14px; background: var(--color-fg); display: inline-block; }
+
+.lcv-section { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 120px; }
+.lcv-section-head { display: flex; flex-direction: column; gap: 6px; max-width: 760px; }
+.lcv-section h2 { font-size: clamp(22px, 2.6vw, 30px); line-height: 1.18; font-weight: 700; letter-spacing: -0.01em; }
+.lcv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+.lcv-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: 22px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.lcv-wide { grid-column: 1 / -1; }
+.lcv-card h3 { font-size: 18px; line-height: 1.35; font-weight: 600; }
+.lcv-q { font-size: 13px; color: var(--color-fg-muted); font-style: italic; }
+.lcv-q b { font-style: normal; font-weight: 600; letter-spacing: .04em; }
+.lcv-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--color-fg-muted); }
+.lcv-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lcv-sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; flex: none; }
+
+.lcv-chart { position: relative; min-height: 140px; min-width: 0; }
+.lcv-chart.lcv-short { min-height: 56px; }
+.lcv-fail { color: var(--color-fg-muted); font-size: 13px; padding: 24px 0; }
+.lcv [data-dash-source-state=refreshing] { opacity: .5; }
+
+.lcv-rank { display: flex; flex-direction: column; gap: 8px; }
+.lcv-rank-row { display: grid; grid-template-columns: minmax(0, 42%) minmax(0, 1fr) 3.6em; gap: 10px; align-items: center; font-size: 13px; line-height: 1.3; cursor: default; border-radius: 4px; }
+.lcv-rank-row:hover .lcv-rank-label { color: var(--color-fg); }
+.lcv-rank-label { color: var(--color-fg); overflow-wrap: anywhere; }
+.lcv-track { position: relative; height: 12px; background: color-mix(in srgb, var(--color-fg) 6%, transparent); border-radius: 3px; }
+.lcv-bar { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+.lcv-tick { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--color-fg); }
+.lcv-val { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 13px; }
+@media (max-width: 520px) {
+  .lcv-rank-row { grid-template-columns: minmax(0, 1fr) 3.6em; row-gap: 4px; }
+  .lcv-rank-label { grid-column: 1 / -1; }
+}
+
+.lcv-stack { display: flex; flex-direction: column; gap: 14px; }
+.lcv-stack-row { display: flex; flex-direction: column; gap: 5px; }
+.lcv-stack-label { font-size: 13px; line-height: 1.3; }
+.lcv-stack-bar { display: flex; height: 26px; border-radius: 4px; overflow: hidden; }
+.lcv-stack-seg { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; min-width: 0; }
+
+.lcv-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px 28px; }
+.lcv-group-title { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--color-fg-muted); margin-bottom: 6px; }
+.lcv-group .lcv-rank-row { grid-template-columns: 7.5em minmax(0, 1fr) 3.6em; }
+
+.lcv-heat-wrap { overflow-x: auto; }
+.lcv-heat { border-collapse: separate; border-spacing: 3px; font-size: 12px; min-width: 620px; width: 100%; }
+.lcv-heat th { font-weight: 600; color: var(--color-fg-muted); text-align: center; vertical-align: bottom; padding: 4px; line-height: 1.25; }
+.lcv-heat th[scope=row] { text-align: left; color: var(--color-fg); font-weight: 400; min-width: 9em; vertical-align: middle; }
+.lcv-heat td { text-align: center; padding: 8px 4px; border-radius: 3px; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.lcv-split { display: flex; flex-direction: column; gap: 14px; }
+.lcv-split-opt { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; align-items: baseline; }
+.lcv-split-num { font-family: var(--font-anthropic-serif); font-weight: 700; font-size: 30px; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; min-width: 3.2em; }
+.lcv-split-text { font-size: 14px; display: flex; gap: 8px; align-items: baseline; }
+.lcv-split-text .lcv-sw { transform: translateY(1px); }
+
+.lcv-tip { position: absolute; z-index: 8; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); box-shadow: var(--cds-shadow-popover); border-radius: 6px; padding: 8px 10px; font-size: 12px; line-height: 1.45; max-width: 260px; color: var(--color-fg); }
+.lcv-tip-h { font-weight: 600; margin-bottom: 2px; }
+.lcv-tip div + div { color: var(--cds-text-secondary); font-variant-numeric: tabular-nums; }
+
+.lcv-foot { display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--color-border-line); padding-top: 20px; font-size: 13px; color: var(--color-fg-muted); }
+.lcv-foot details { max-width: 760px; }
+.lcv-foot summary { cursor: pointer; font-weight: 600; color: var(--color-fg); }
+.lcv-foot ol { padding-left: 20px; margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .lcv-bar, .lcv-stack-seg { transition: width var(--cds-dur-slow) var(--cds-ease-out); }
+}
+</style>
+
+<div class="lcv" data-read lang="es">
+  <header class="lcv-head" id="inicio">
+    <p class="lcv-eyebrow">Lima Cómo Vamos · Encuesta de percepción 2025</p>
+    <h1 class="lcv-title">Calidad de vida en Lima y Callao</h1>
+    <p class="lcv-lead"><b data-draw="num" data-fixed="1" data-p="P2" data-r="Satisfecho (4-5)" data-source="respuestas" data-field="total" data-where="pregunta=P2&amp;respuesta=Satisfecho (4-5)">—</b> de los entrevistados está satisfecho con Lima/Callao como ciudad para vivir. <b data-draw="num" data-fixed="1" data-p="P5" data-r="Inseguro (1-2)" data-source="respuestas" data-field="total" data-where="pregunta=P5&amp;respuesta=Inseguro (1-2)">—</b> se siente inseguro y <b data-draw="num" data-fixed="1" data-p="P3" data-r="La inseguridad ciudadana" data-source="respuestas" data-field="total" data-where="pregunta=P3&amp;respuesta=La inseguridad ciudadana">—</b> pone la inseguridad entre los tres problemas más importantes de la ciudad.</p>
+  </header>
+
+  <div class="lcv-kpis" id="indicadores">
+    <article class="lcv-kpi" id="kpi-ciudad">
+      <p class="lcv-kpi-label">Satisfechos con la ciudad para vivir</p>
+      <p class="lcv-kpi-value"><span data-draw="num" data-fixed="1" data-p="P2" data-r="Satisfecho (4-5)" data-source="respuestas" data-field="total" data-where="pregunta=P2&amp;respuesta=Satisfecho (4-5)">—</span></p>
+      <p class="lcv-kpi-note">Califican 4 o 5 en una escala de 1 a 5</p>
+      <p class="lcv-kpi-range" data-draw="range" data-p="P2" data-r="Satisfecho (4-5)"></p>
+    </article>
+    <article class="lcv-kpi" id="kpi-inseguridad">
+      <p class="lcv-kpi-label">Se sienten inseguros en la ciudad</p>
+      <p class="lcv-kpi-value"><span data-draw="num" data-fixed="1" data-p="P5" data-r="Inseguro (1-2)" data-source="respuestas" data-field="total" data-where="pregunta=P5&amp;respuesta=Inseguro (1-2)">—</span></p>
+      <p class="lcv-kpi-note">Califican 1 o 2 frente a la violencia y la delincuencia</p>
+      <p class="lcv-kpi-range" data-draw="range" data-p="P5" data-r="Inseguro (1-2)"></p>
+    </article>
+    <article class="lcv-kpi" id="kpi-transporte">
+      <p class="lcv-kpi-label">Insatisfechos con el transporte público</p>
+      <p class="lcv-kpi-value"><span data-draw="num" data-fixed="1" data-p="P4" data-t="El transporte público" data-r="Insatisfecho (1-2)" data-source="respuestas" data-field="total" data-where="pregunta=P4&amp;tema=El transporte público&amp;respuesta=Insatisfecho (1-2)">—</span></p>
+      <p class="lcv-kpi-note">Califican 1 o 2 el transporte público</p>
+      <p class="lcv-kpi-range" data-draw="range" data-p="P4" data-t="El transporte público" data-r="Insatisfecho (1-2)"></p>
+    </article>
+    <article class="lcv-kpi" id="kpi-espacio">
+      <p class="lcv-kpi-label">Defienden el libre tránsito por calles y parques</p>
+      <p class="lcv-kpi-value"><span data-draw="num" data-fixed="1" data-p="P25" data-r="Las calles y parques son públicos y todos los habitantes de la ciudad tienen derecho a transitar por ellos sin restricciones" data-source="respuestas" data-field="total" data-where="pregunta=P25&amp;respuesta=Las calles y parques son públicos y todos los habitantes de la ciudad tienen derecho a transitar por ellos sin restricciones">—</span></p>
+      <p class="lcv-kpi-note">Frente a poner rejas o tranqueras en el barrio</p>
+      <p class="lcv-kpi-range" data-draw="range" data-p="P25" data-r="Las calles y parques son públicos y todos los habitantes de la ciudad tienen derecho a transitar por ellos sin restricciones"></p>
+    </article>
+  </div>
+
+  <div class="lcv-controls" id="filtro">
+    <div class="lcv-filter">
+      <label for="lcv-seg">Ver los gráficos para</label>
+      <select id="lcv-seg" class="dash-select" aria-label="Segmento de la población">
+        <option value="total">Total Lima y Callao</option>
+        <optgroup label="Género">
+          <option value="hombre">Hombres</option>
+          <option value="mujer">Mujeres</option>
+        </optgroup>
+        <optgroup label="Edad">
+          <option value="edad_18_29">18 a 29 años</option>
+          <option value="edad_30_44">30 a 44 años</option>
+          <option value="edad_45_mas">45 años a más</option>
+        </optgroup>
+        <optgroup label="Nivel socioeconómico">
+          <option value="nse_a">NSE A</option>
+          <option value="nse_b">NSE B</option>
+          <option value="nse_c">NSE C</option>
+          <option value="nse_d">NSE D</option>
+          <option value="nse_e">NSE E</option>
+        </optgroup>
+        <optgroup label="Área interdistrital">
+          <option value="callao">Callao</option>
+          <option value="lima_norte">Lima Norte</option>
+          <option value="lima_centro">Lima Centro</option>
+          <option value="lima_sur">Lima Sur</option>
+          <option value="lima_este">Lima Este</option>
+        </optgroup>
+      </select>
+    </div>
+    <nav class="lcv-nav" aria-label="Secciones">
+      <a href="#ciudad" data-go="ciudad">Ciudad</a>
+      <a href="#seguridad" data-go="seguridad">Seguridad</a>
+      <a href="#movilidad" data-go="movilidad">Movilidad</a>
+      <a href="#ambiente" data-go="ambiente">Ambiente</a>
+      <a href="#vivienda" data-go="vivienda">Vivienda y espacio público</a>
+    </nav>
+    <p class="lcv-controls-note">
+      <span class="lcv-key"><i class="lcv-key-bar lcv-sw" data-c="0"></i>Segmento elegido</span>
+      <span class="lcv-key"><i class="lcv-key-tick"></i>Total Lima y Callao, cuando eliges un segmento</span>
+      <span>Margen de error: ±2.9% en el total y ±6% por área interdistrital.</span>
+    </p>
+  </div>
+
+  <section class="lcv-section" id="ciudad">
+    <div class="lcv-section-head">
+      <p class="lcv-eyebrow">Ciudad</p>
+      <h2>Cómo valoran Lima y Callao como ciudad para vivir</h2>
+    </div>
+    <div class="lcv-grid">
+      <article class="lcv-card lcv-wide" id="p2-satisfaccion">
+        <h3>Satisfacción con la ciudad para vivir</h3>
+        <p class="lcv-q"><b>P2</b> · En general, ¿qué tan satisfecho se siente con Lima/Callao como una ciudad para vivir? Escala de 1 a 5.</p>
+        <div class="lcv-legend"><span><i class="lcv-sw" data-c="neg"></i>Insatisfecho (1-2)</span><span><i class="lcv-sw" data-c="neu"></i>Ni satisfecho ni insatisfecho (3)</span><span><i class="lcv-sw" data-c="pos"></i>Satisfecho (4-5)</span><span><i class="lcv-sw" data-c="ns"></i>No sabe</span></div>
+        <div class="lcv-chart lcv-short" data-draw="stack" data-p="P2" data-sort="none" data-source="respuestas" role="img" aria-label="Distribución de la satisfacción con Lima y Callao como ciudad para vivir"></div>
+      </article>
+      <article class="lcv-card lcv-wide" id="brechas">
+        <h3>Satisfacción con la ciudad según quién responde</h3>
+        <p class="lcv-q"><b>P2</b> · Porcentaje que califica 4 o 5, por género, edad, nivel socioeconómico y área interdistrital. No cambia con el selector.</p>
+        <div class="lcv-chart" data-draw="segbars" data-p="P2" data-r="Satisfecho (4-5)" data-source="respuestas" role="img" aria-label="Porcentaje satisfecho con la ciudad por segmento de la población"></div>
+      </article>
+      <article class="lcv-card" id="p3-problemas">
+        <h3>Problemas más importantes de la ciudad</h3>
+        <p class="lcv-q"><b>P3</b> · ¿Cuáles son los tres problemas más importantes que afectan la calidad de vida en Lima/Callao? Hasta tres respuestas.</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P3" data-source="respuestas" role="img" aria-label="Problemas más mencionados de la ciudad"></div>
+      </article>
+      <article class="lcv-card" id="p4-aspectos">
+        <h3>Satisfacción con aspectos de la vida en la ciudad</h3>
+        <p class="lcv-q"><b>P4</b> · ¿Qué tan satisfecho está con cada aspecto? Escala de 1 a 5. Ordenado de mayor a menor insatisfacción.</p>
+        <div class="lcv-legend"><span><i class="lcv-sw" data-c="neg"></i>Insatisfecho</span><span><i class="lcv-sw" data-c="neu"></i>Neutral</span><span><i class="lcv-sw" data-c="pos"></i>Satisfecho</span><span><i class="lcv-sw" data-c="ns"></i>No sabe</span></div>
+        <div class="lcv-chart" data-draw="stack" data-p="P4" data-source="respuestas" role="img" aria-label="Satisfacción con nueve aspectos de la vida en la ciudad"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="lcv-section" id="seguridad">
+    <div class="lcv-section-head">
+      <p class="lcv-eyebrow">Seguridad ciudadana</p>
+      <h2>Cómo se vive la inseguridad en los barrios</h2>
+    </div>
+    <div class="lcv-grid">
+      <article class="lcv-card lcv-wide" id="p5-seguridad">
+        <h3>Percepción de seguridad en la ciudad</h3>
+        <p class="lcv-q"><b>P5</b> · Con relación a la violencia y la delincuencia, ¿qué tan seguro se siente en Lima/Callao? Escala de 1 a 5.</p>
+        <div class="lcv-legend"><span><i class="lcv-sw" data-c="neg"></i>Inseguro (1-2)</span><span><i class="lcv-sw" data-c="neu"></i>Ni seguro ni inseguro (3)</span><span><i class="lcv-sw" data-c="pos"></i>Seguro (4-5)</span><span><i class="lcv-sw" data-c="ns"></i>No sabe</span></div>
+        <div class="lcv-chart lcv-short" data-draw="stack" data-p="P5" data-sort="none" data-source="respuestas" role="img" aria-label="Distribución de la percepción de seguridad"></div>
+      </article>
+      <article class="lcv-card" id="p6-problemas-seguridad">
+        <h3>Problemas de seguridad donde vive</h3>
+        <p class="lcv-q"><b>P6</b> · ¿Cuáles son los problemas de seguridad ciudadana que más afectan al lugar donde vive? Respuesta múltiple.</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P6" data-source="respuestas" role="img" aria-label="Problemas de seguridad más mencionados"></div>
+      </article>
+      <article class="lcv-card" id="p7-cambios">
+        <h3>Cómo cambió su rutina por la inseguridad</h3>
+        <p class="lcv-q"><b>P7</b> · ¿Cómo ha modificado sus actividades cotidianas debido a la inseguridad? Respuesta múltiple.</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P7" data-source="respuestas" role="img" aria-label="Cambios en las actividades cotidianas por la inseguridad"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="lcv-section" id="movilidad">
+    <div class="lcv-section-head">
+      <p class="lcv-eyebrow">Movilidad y transporte</p>
+      <h2>Cómo se mueven y qué piden para el transporte</h2>
+    </div>
+    <div class="lcv-grid">
+      <article class="lcv-card" id="p10-modos">
+        <h3>Modos de viaje al trabajo o centro de estudios</h3>
+        <p class="lcv-q"><b>P10</b> · En un día regular, ¿qué modos de viaje usa en su recorrido? Respuesta múltiple.</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P10" data-source="respuestas" role="img" aria-label="Modos de viaje más usados"></div>
+      </article>
+      <article class="lcv-card" id="p8-motivos">
+        <h3>Motivos para salir de casa en la última semana</h3>
+        <p class="lcv-q"><b>P8</b> · En la última semana, ¿se ha movilizado fuera de su hogar por cada uno de estos motivos?</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P8" data-source="respuestas" role="img" aria-label="Motivos de viaje en la última semana"></div>
+      </article>
+      <article class="lcv-card lcv-wide" id="p9-modo-motivo">
+        <h3>Modo principal según el motivo del viaje</h3>
+        <p class="lcv-q"><b>P9</b> · ¿Cómo se movilizó principalmente para su viaje por cada motivo? Porcentaje dentro de cada motivo; se muestran los 8 modos con mayor uso.</p>
+        <div class="lcv-chart" data-draw="heat" data-p="P9" data-cols="8" data-source="respuestas" role="img" aria-label="Mapa de calor del modo de transporte principal por motivo de viaje"></div>
+      </article>
+      <article class="lcv-card lcv-wide" id="p11-servicio">
+        <h3>Calificación del servicio por modo de transporte</h3>
+        <p class="lcv-q"><b>P11</b> · Si usó este modo en el último mes, ¿cómo calificaría el servicio? Escala de 1 a 5. Base: total de entrevistados, incluye a quienes no lo usaron.</p>
+        <div class="lcv-legend"><span><i class="lcv-sw" data-c="neg"></i>Insatisfecho (1-2)</span><span><i class="lcv-sw" data-c="neu"></i>Neutral (3)</span><span><i class="lcv-sw" data-c="pos"></i>Satisfecho (4-5)</span><span><i class="lcv-sw" data-c="unused"></i>No ha usado</span><span><i class="lcv-sw" data-c="ns"></i>No sabe</span></div>
+        <div class="lcv-chart" data-draw="stack" data-p="P11" data-source="respuestas" role="img" aria-label="Calificación del servicio por modo de transporte"></div>
+      </article>
+      <article class="lcv-card lcv-wide" id="p12-aspectos">
+        <h3>Lo que más se valora de cada medio</h3>
+        <p class="lcv-q"><b>P12</b> · De los medios que usó en el último mes, ¿cuál es el aspecto que más valora? Porcentaje dentro de cada medio.</p>
+        <div class="lcv-chart" data-draw="heat" data-p="P12" data-source="respuestas" role="img" aria-label="Mapa de calor del aspecto más valorado por medio de transporte"></div>
+      </article>
+      <article class="lcv-card lcv-wide" id="p16-medidas">
+        <h3>Medidas de movilidad que más les beneficiarían</h3>
+        <p class="lcv-q"><b>P16</b> · Tomando en cuenta cómo está la movilidad en la ciudad, ¿cuáles de estas medidas cree que le beneficiarán más? Respuesta múltiple.</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P16" data-source="respuestas" role="img" aria-label="Medidas de movilidad preferidas"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="lcv-section" id="ambiente">
+    <div class="lcv-section-head">
+      <p class="lcv-eyebrow">Ambiente</p>
+      <h2>Cómo perciben la gestión ambiental</h2>
+    </div>
+    <div class="lcv-grid">
+      <article class="lcv-card" id="p17-ambiente">
+        <h3>Satisfacción con la gestión ambiental</h3>
+        <p class="lcv-q"><b>P17</b> · ¿Qué tan satisfecho está con cada tema? Escala de 1 a 5. Ordenado de mayor a menor insatisfacción.</p>
+        <div class="lcv-legend"><span><i class="lcv-sw" data-c="neg"></i>Insatisfecho</span><span><i class="lcv-sw" data-c="neu"></i>Neutral</span><span><i class="lcv-sw" data-c="pos"></i>Satisfecho</span><span><i class="lcv-sw" data-c="ns"></i>No sabe</span></div>
+        <div class="lcv-chart" data-draw="stack" data-p="P17" data-source="respuestas" role="img" aria-label="Satisfacción con diez temas de gestión ambiental"></div>
+      </article>
+      <article class="lcv-card" id="p18-problemas-ambientales">
+        <h3>Problemas ambientales más graves</h3>
+        <p class="lcv-q"><b>P18</b> · ¿Cuáles cree que son los tres problemas ambientales más graves? Hasta tres respuestas.</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P18" data-source="respuestas" role="img" aria-label="Problemas ambientales más mencionados"></div>
+      </article>
+    </div>
+  </section>
+
+  <section class="lcv-section" id="vivienda">
+    <div class="lcv-section-head">
+      <p class="lcv-eyebrow">Vivienda y espacio público</p>
+      <h2>Qué valoran en la vivienda y el espacio público</h2>
+    </div>
+    <div class="lcv-grid">
+      <article class="lcv-card" id="p22-vivienda">
+        <h3>Lo más valorado en una vivienda ideal</h3>
+        <p class="lcv-q"><b>P22</b> · ¿Cuáles son las características que más valoraría en una vivienda? Respuesta múltiple.</p>
+        <div class="lcv-chart" data-draw="rank" data-p="P22" data-source="respuestas" role="img" aria-label="Características más valoradas en una vivienda"></div>
+      </article>
+      <div class="lcv-split-col" style="display:flex;flex-direction:column;gap:20px;min-width:0">
+        <article class="lcv-card" id="p23-acceso">
+          <h3>Acceso a los espacios públicos</h3>
+          <p class="lcv-q"><b>P23</b> · ¿Con cuál de estas afirmaciones está más de acuerdo?</p>
+          <div class="lcv-split">
+            <div class="lcv-split-opt"><span class="lcv-split-num" data-draw="num" data-p="P23" data-r="Los espacios públicos deben ser de libre acceso, sin ningún tipo de cobro o limitación a las personas, incluidos los parques, plazas, playas y lugares de esparcimiento públicos" data-source="respuestas" data-field="total" data-where="pregunta=P23&amp;respuesta=Los espacios públicos deben ser de libre acceso, sin ningún tipo de cobro o limitación a las personas, incluidos los parques, plazas, playas y lugares de esparcimiento públicos">—</span><span class="lcv-split-text"><i class="lcv-sw" data-c="pos"></i>Deben ser de libre acceso, sin cobro ni limitación: parques, plazas, playas y lugares de esparcimiento.</span></div>
+            <div class="lcv-split-opt"><span class="lcv-split-num" data-draw="num" data-p="P23" data-r="Se puede cobrar o restringir el acceso a algunas personas a algunos espacios públicos, ya sean parques, plazas, playas o lugares de esparcimiento" data-source="respuestas" data-field="total" data-where="pregunta=P23&amp;respuesta=Se puede cobrar o restringir el acceso a algunas personas a algunos espacios públicos, ya sean parques, plazas, playas o lugares de esparcimiento">—</span><span class="lcv-split-text"><i class="lcv-sw" data-c="neg"></i>Se puede cobrar o restringir el acceso a algunos espacios públicos.</span></div>
+          </div>
+        </article>
+        <article class="lcv-card" id="p25-rejas">
+          <h3>Rejas y tranqueras en el barrio</h3>
+          <p class="lcv-q"><b>P25</b> · ¿Con cuál de estas afirmaciones está más de acuerdo?</p>
+          <div class="lcv-split">
+            <div class="lcv-split-opt"><span class="lcv-split-num" data-draw="num" data-p="P25" data-r="Las calles y parques son públicos y todos los habitantes de la ciudad tienen derecho a transitar por ellos sin restricciones" data-source="respuestas" data-field="total" data-where="pregunta=P25&amp;respuesta=Las calles y parques son públicos y todos los habitantes de la ciudad tienen derecho a transitar por ellos sin restricciones">—</span><span class="lcv-split-text"><i class="lcv-sw" data-c="pos"></i>Las calles y parques son públicos y todos tienen derecho a transitar por ellos sin restricciones.</span></div>
+            <div class="lcv-split-opt"><span class="lcv-split-num" data-draw="num" data-p="P25" data-r="Si los vecinos se ponen de acuerdo, tienen derecho a poner rejas o tranqueras y restringir el paso de extraños a las calles y parques de su barrio" data-source="respuestas" data-field="total" data-where="pregunta=P25&amp;respuesta=Si los vecinos se ponen de acuerdo, tienen derecho a poner rejas o tranqueras y restringir el paso de extraños a las calles y parques de su barrio">—</span><span class="lcv-split-text"><i class="lcv-sw" data-c="neg"></i>Si los vecinos se ponen de acuerdo, pueden poner rejas o tranqueras y restringir el paso a extraños.</span></div>
+          </div>
+        </article>
+      </div>
+      <article class="lcv-card lcv-wide" id="p24-normas">
+        <h3>Acuerdo con prácticas que afectan la convivencia</h3>
+        <p class="lcv-q"><b>P24</b> · ¿Qué tan de acuerdo está con cada afirmación? Escala de 1 a 5.</p>
+        <div class="lcv-legend"><span><i class="lcv-sw" data-c="neg"></i>En desacuerdo (1-2)</span><span><i class="lcv-sw" data-c="neu"></i>Ni de acuerdo ni en desacuerdo</span><span><i class="lcv-sw" data-c="pos"></i>De acuerdo (4-5)</span><span><i class="lcv-sw" data-c="ns"></i>No sabe</span></div>
+        <div class="lcv-chart" data-draw="stack" data-p="P24" data-sort="pos" data-source="respuestas" role="img" aria-label="Acuerdo con cinco afirmaciones sobre convivencia"></div>
+      </article>
+    </div>
+  </section>
+
+  <footer class="lcv-foot" id="ficha">
+    <p>Fuente: Lima Cómo Vamos, estudio de percepción sobre calidad de vida urbana 2025. Porcentajes sobre el total de entrevistas.</p>
+    <details>
+      <summary>Ficha técnica del estudio</summary>
+      <ol>
+        <li>Objetivo: recoger las percepciones de las personas que viven en Lima y Callao sobre diversos temas de calidad de vida urbana.</li>
+        <li>Ámbito: Lima Metropolitana y la Provincia Constitucional del Callao.</li>
+        <li>Población objetivo: hombres y mujeres de 18 años a más, de todos los niveles socioeconómicos, residentes por un año o más en Lima Metropolitana y Callao.</li>
+        <li>Marco muestral: población electoral de las Elecciones Generales 2021, con indicadores demográficos y cartografía del Censo INEI 2017.</li>
+        <li>Tipo de estudio: cuantitativo, con encuestas presenciales cara a cara en el hogar, asistidas por dispositivos móviles.</li>
+        <li>Muestreo: probabilístico, polietápico y estratificado, aproporcional al tamaño poblacional de cada estrato, distribuido por sexo y edad dentro de cada zona.</li>
+        <li>Muestra: 1140 encuestas efectivas. Margen de error de ±2.9% para el total de Lima y Callao y de ±6% en cada área interdistrital.</li>
+        <li>Trabajo de campo: del 5 al 21 de diciembre de 2025.</li>
+      </ol>
+    </details>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const SEGS = [
+    ['total', 'Total Lima y Callao', ''], ['hombre', 'Hombres', 'Género'], ['mujer', 'Mujeres', 'Género'],
+    ['edad_18_29', '18 a 29 años', 'Edad'], ['edad_30_44', '30 a 44 años', 'Edad'], ['edad_45_mas', '45 años a más', 'Edad'],
+    ['nse_a', 'NSE A', 'Nivel socioeconómico'], ['nse_b', 'NSE B', 'Nivel socioeconómico'], ['nse_c', 'NSE C', 'Nivel socioeconómico'], ['nse_d', 'NSE D', 'Nivel socioeconómico'], ['nse_e', 'NSE E', 'Nivel socioeconómico'],
+    ['callao', 'Callao', 'Área interdistrital'], ['lima_norte', 'Lima Norte', 'Área interdistrital'], ['lima_centro', 'Lima Centro', 'Área interdistrital'], ['lima_sur', 'Lima Sur', 'Área interdistrital'], ['lima_este', 'Lima Este', 'Área interdistrital']
+  ];
+  const LABEL = Object.fromEntries(SEGS.map((s) => [s[0], s[1]]));
+  const ZONES = ['callao', 'lima_norte', 'lima_centro', 'lima_sur', 'lima_este'];
+  const C = dash.colors || [];
+  const COL = {
+    pos: C[0], neg: C[1], neu: C[2], '0': C[0], '1': C[1], '2': C[2],
+    unused: 'color-mix(in srgb, var(--color-fg) 16%, var(--color-panel))',
+    ns: 'color-mix(in srgb, var(--color-fg) 6%, var(--color-panel))'
+  };
+  const INK = { pos: 'var(--color-bg)', neg: 'var(--color-bg)', neu: 'var(--color-fg)', unused: 'var(--color-fg)', ns: 'var(--color-fg)' };
+  const cat = (s) => /^No ha usado/.test(s) ? 'unused' : /^No sabe/.test(s) ? 'ns' : /^(Insatisf|En desacuerdo|Inseguro)/.test(s) ? 'neg' : /^Ni /.test(s) ? 'neu' : 'pos';
+  const enc = (v) => String(v).replace(/[%&=]/g, (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+  const fmt = (v) => (v == null || isNaN(v)) ? '—' : (+v).toFixed(1) + '%';
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const seg = () => { const s = document.getElementById('lcv-seg'); const v = s ? s.value : 'total'; return LABEL[v] ? v : 'total'; };
+  const mark = (node, p, r, t, field) => {
+    node.setAttribute('data-source', 'respuestas');
+    node.setAttribute('data-field', field);
+    node.setAttribute('data-where', 'pregunta=' + enc(p) + (t ? '&tema=' + enc(t) : '') + '&respuesta=' + enc(r));
+    return node;
+  };
+  const state = (box, inline) => {
+    const d = dash.data('respuestas');
+    if (d.status === 'ok') { box.classList.remove('dash-skeleton'); return d.data; }
+    if (d.status === 'loading') {
+      if (inline) box.textContent = '—'; else box.replaceChildren();
+      box.classList.add('dash-skeleton');
+      return null;
+    }
+    box.classList.remove('dash-skeleton');
+    if (inline) box.textContent = '—';
+    else if (d.status === 'error') box.replaceChildren(el('p', 'lcv-fail', 'No se pudo cargar'));
+    else box.replaceChildren();
+    return null;
+  };
+  const find = (data, p, r, t) => data.find((x) => x.pregunta === p && x.respuesta === r && (x.tema || '') === (t || ''));
+  const tip = (box, target, lines) => {
+    const show = (ev) => {
+      let t = box.querySelector(':scope > .lcv-tip');
+      if (!t) { t = el('div', 'lcv-tip'); box.append(t); }
+      t.replaceChildren(...lines().map((l, i) => el('div', i === 0 ? 'lcv-tip-h' : '', l)));
+      t.hidden = false;
+      const r = box.getBoundingClientRect();
+      let x = ev.clientX - r.left + 14, y = ev.clientY - r.top + 14;
+      const w = t.offsetWidth;
+      if (x + w > r.width) x = Math.max(0, ev.clientX - r.left - w - 14);
+      t.style.left = x + 'px'; t.style.top = y + 'px';
+    };
+    target.addEventListener('pointermove', show);
+    target.addEventListener('pointerleave', () => { const t = box.querySelector(':scope > .lcv-tip'); if (t) t.hidden = true; });
+  };
+  const cmpLines = (head, s, v, total) => [head, LABEL[s] + ': ' + fmt(v)].concat(s !== 'total' ? ['Total Lima y Callao: ' + fmt(total)] : []);
+
+  window.LCV = { SEGS, LABEL, ZONES, COL, INK, cat, fmt, el, seg, mark, state, find, tip, cmpLines,
+    names: ['num', 'range', 'rank', 'stack', 'heat', 'segbars'] };
+
+  document.querySelectorAll('.lcv-sw[data-c]').forEach((s) => { s.style.background = COL[s.dataset.c] || ''; });
+
+  const sel = document.getElementById('lcv-seg');
+  if (sel) sel.addEventListener('change', () => { window.LCV.names.forEach((n) => dash.draw(n)); });
+
+  document.querySelectorAll('.lcv-nav a[data-go]').forEach((a) => {
+    a.addEventListener('click', (ev) => {
+      const target = document.getElementById(a.dataset.go);
+      if (!target) return;
+      ev.preventDefault();
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+      dash.setLink(a.dataset.go);
+    });
+  });
+  const go = (location.hash || '').slice(1);
+  if (go && /^[a-z0-9-]+$/.test(go)) { const t = document.getElementById(go); if (t) t.scrollIntoView({ block: 'start' }); }
+})();
+</script>
+
+<script>
+(() => {
+  const L = window.LCV;
+
+  // Single number: the selected segment, or always the total when data-fixed is set.
+  dash.draw('num', (box) => {
+    const data = L.state(box, true); if (!data) return;
+    const field = box.dataset.fixed ? 'total' : L.seg();
+    const row = L.find(data, box.dataset.p, box.dataset.r, box.dataset.t);
+    L.mark(box, box.dataset.p, box.dataset.r, box.dataset.t, field);
+    box.textContent = row ? L.fmt(row[field]) : '—';
+  });
+
+  // Lowest and highest area for a KPI.
+  dash.draw('range', (box) => {
+    const data = L.state(box, false); if (!data) return;
+    const row = L.find(data, box.dataset.p, box.dataset.r, box.dataset.t);
+    if (!row) { box.replaceChildren(); return; }
+    const z = L.ZONES.slice().sort((a, b) => row[a] - row[b]);
+    const lo = z[0], hi = z[z.length - 1];
+    const num = (f) => L.mark(L.el('b', '', L.fmt(row[f])), box.dataset.p, box.dataset.r, box.dataset.t, f);
+    box.replaceChildren('Por área: de ', num(lo), ' en ' + L.LABEL[lo] + ' a ', num(hi), ' en ' + L.LABEL[hi]);
+  });
+
+  // Ranked horizontal bars for multiple-choice questions.
+  dash.draw('rank', (box) => {
+    const data = L.state(box, false); if (!data) return;
+    const p = box.dataset.p, t = box.dataset.t || '', s = L.seg();
+    let rows = data.filter((r) => r.pregunta === p && (r.tema || '') === t);
+    const tail = rows.filter((r) => /^(No sabe|No se moviliza)/.test(r.respuesta));
+    rows = rows.filter((r) => !tail.includes(r)).sort((a, b) => b[s] - a[s]).concat(tail.sort((a, b) => b[s] - a[s]));
+    const max = Math.max(1, ...rows.map((r) => Math.max(r[s], r.total)));
+    const top = Math.min(100, Math.ceil(max / 10) * 10);
+    const list = L.el('div', 'lcv-rank');
+    rows.forEach((r) => {
+      const row = L.el('div', 'lcv-rank-row');
+      const track = L.el('div', 'lcv-track');
+      const bar = L.el('div', 'lcv-bar');
+      bar.style.width = (r[s] / top * 100) + '%';
+      bar.style.background = L.COL.pos;
+      track.append(bar);
+      if (s !== 'total') { const tk = L.el('div', 'lcv-tick'); tk.style.left = (r.total / top * 100) + '%'; track.append(tk); }
+      row.append(L.el('div', 'lcv-rank-label', r.respuesta), track, L.mark(L.el('span', 'lcv-val', L.fmt(r[s])), p, r.respuesta, t, s));
+      L.tip(box, row, () => L.cmpLines(r.respuesta, s, r[s], r.total));
+      list.append(row);
+    });
+    box.replaceChildren(list);
+  });
+
+  // 100% stacked bars for scale questions, one row per topic.
+  dash.draw('stack', (box) => {
+    const data = L.state(box, false); if (!data) return;
+    const p = box.dataset.p, s = L.seg(), sort = box.dataset.sort || 'neg';
+    const rows = data.filter((r) => r.pregunta === p);
+    const temas = [...new Set(rows.map((r) => r.tema || ''))];
+    const groups = temas.map((t) => ({ t, rs: rows.filter((r) => (r.tema || '') === t) }));
+    const share = (g, c) => g.rs.filter((r) => L.cat(r.respuesta) === c).reduce((a, r) => a + r[s], 0);
+    if (sort !== 'none') groups.sort((a, b) => share(b, sort) - share(a, sort));
+    const wrap = L.el('div', 'lcv-stack');
+    groups.forEach((g) => {
+      const row = L.el('div', 'lcv-stack-row');
+      if (g.t) row.append(L.el('div', 'lcv-stack-label', g.t));
+      const bar = L.el('div', 'lcv-stack-bar');
+      const sum = g.rs.reduce((a, r) => a + r[s], 0) || 1;
+      g.rs.forEach((r) => {
+        const c = L.cat(r.respuesta);
+        const w = r[s] / sum * 100;
+        const segEl = L.el('div', 'lcv-stack-seg');
+        segEl.style.width = w + '%';
+        segEl.style.background = L.COL[c];
+        segEl.style.color = L.INK[c];
+        if (w >= 9) segEl.append(L.mark(L.el('span', '', L.fmt(r[s])), p, r.respuesta, g.t, s));
+        L.tip(box, segEl, () => L.cmpLines((g.t ? g.t + ' · ' : '') + r.respuesta, s, r[s], r.total));
+        bar.append(segEl);
+      });
+      row.append(bar);
+      wrap.append(row);
+    });
+    box.replaceChildren(wrap);
+  });
+
+  // Heat table: topics in rows, answers in columns.
+  dash.draw('heat', (box) => {
+    const data = L.state(box, false); if (!data) return;
+    const p = box.dataset.p, s = L.seg(), limit = +box.dataset.cols || 99;
+    const rows = data.filter((r) => r.pregunta === p && !/^No sabe/.test(r.respuesta));
+    const temas = [...new Set(rows.map((r) => r.tema))];
+    const best = {};
+    rows.forEach((r) => { best[r.respuesta] = Math.max(best[r.respuesta] || 0, r.total); });
+    const cols = Object.keys(best).sort((a, b) => best[b] - best[a]).slice(0, limit);
+    const shown = rows.filter((r) => cols.includes(r.respuesta));
+    const max = Math.max(1, ...shown.map((r) => r[s]));
+    const table = L.el('table', 'lcv-heat');
+    const head = L.el('tr');
+    head.append(L.el('th'));
+    cols.forEach((c) => { const th = L.el('th', '', c); th.setAttribute('scope', 'col'); head.append(th); });
+    const thead = L.el('thead'); thead.append(head);
+    const tbody = L.el('tbody');
+    temas.forEach((t) => {
+      const tr = L.el('tr');
+      const th = L.el('th', '', t); th.setAttribute('scope', 'row'); tr.append(th);
+      cols.forEach((c) => {
+        const r = shown.find((x) => x.tema === t && x.respuesta === c);
+        const v = r ? r[s] : 0;
+        const k = Math.round(4 + v / max * 86);
+        const td = L.el('td', '', r ? L.fmt(v) : '—');
+        td.style.background = 'color-mix(in srgb, ' + L.COL.neg + ' ' + k + '%, var(--color-panel))';
+        td.style.color = k > 48 ? 'var(--color-bg)' : 'var(--color-fg)';
+        if (r) { L.mark(td, p, c, t, s); L.tip(box, td, () => L.cmpLines(t + ' · ' + c, s, v, r.total)); }
+        tr.append(td);
+      });
+      tbody.append(tr);
+    });
+    table.append(thead, tbody);
+    const wrap = L.el('div', 'lcv-heat-wrap'); wrap.append(table);
+    box.replaceChildren(wrap);
+  });
+
+  // One answer across every population segment, grouped.
+  dash.draw('segbars', (box) => {
+    const data = L.state(box, false); if (!data) return;
+    const p = box.dataset.p, rr = box.dataset.r, t = box.dataset.t || '';
+    const row = L.find(data, p, rr, t);
+    if (!row) { box.replaceChildren(); return; }
+    const groups = [];
+    L.SEGS.filter((x) => x[2]).forEach((x) => {
+      let g = groups.find((y) => y.name === x[2]);
+      if (!g) { g = { name: x[2], segs: [] }; groups.push(g); }
+      g.segs.push(x[0]);
+    });
+    const max = Math.max(1, ...L.SEGS.map((x) => row[x[0]]));
+    const top = Math.min(100, Math.ceil(max / 10) * 10);
+    const wrap = L.el('div', 'lcv-groups');
+    groups.forEach((g) => {
+      const gb = L.el('div', 'lcv-group');
+      gb.append(L.el('p', 'lcv-group-title', g.name));
+      const list = L.el('div', 'lcv-rank');
+      g.segs.forEach((k) => {
+        const r = L.el('div', 'lcv-rank-row');
+        const track = L.el('div', 'lcv-track');
+        const bar = L.el('div', 'lcv-bar');
+        bar.style.width = (row[k] / top * 100) + '%';
+        bar.style.background = L.COL.pos;
+        const tk = L.el('div', 'lcv-tick'); tk.style.left = (row.total / top * 100) + '%';
+        track.append(bar, tk);
+        r.append(L.el('div', 'lcv-rank-label', L.LABEL[k]), track, L.mark(L.el('span', 'lcv-val', L.fmt(row[k])), p, rr, t, k));
+        L.tip(box, r, () => L.cmpLines(rr, k, row[k], row.total));
+        list.append(r);
+      });
+      gb.append(list);
+      wrap.append(gb);
+    });
+    box.replaceChildren(wrap);
+  });
+})();
+</script>
+
+</div>
+<script>dash._start();</script>
+</body>
+</html>

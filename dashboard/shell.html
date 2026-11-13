@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lima Cómo Vamos 2025</title>
+<meta name="description" content="Dashboard de la encuesta de percepción sobre calidad de vida urbana Lima Cómo Vamos 2025.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@600;700&family=Inter:wght@400;600;700&display=swap">
+<style>
+/* Plaza Cívica tokens, mapped to the names the dashboard page uses. */
+:root {
+  --color-bg: #FCF8F2; --color-panel: #FFFFFF; --color-fg: #222222; --color-fg-muted: #666E75;
+  --color-border-line: #E4E7EA; --color-ok: #1E7F5C; --color-warn: #B8791B; --color-bad: #B4372E;
+  --chart-1: #1D92DA; --chart-2: #08294A; --chart-3: #8A939B; --chart-4: #105C8B;
+  --font-anthropic-sans: Inter, 'Helvetica Neue', Arial, sans-serif;
+  --font-anthropic-serif: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif;
+  --cds-font-size-body: 15px; --cds-radius: 14px;
+  --cds-surface-popover: #FFFFFF; --cds-border: #C7CDD2; --cds-shadow-popover: 0 10px 30px rgba(8,41,74,.12);
+  --cds-text-secondary: #666E75; --cds-dur-slow: 360ms; --cds-ease-out: cubic-bezier(.2,.6,.3,1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --color-bg: #061D35; --color-panel: #08294A; --color-fg: #FCF8F2; --color-fg-muted: #A9C0D6;
+  --color-border-line: #1C4468; --chart-1: #3FA3DF; --chart-2: #C9D6E3; --chart-3: #6B7C8D; --chart-4: #A5D3F0;
+  --cds-surface-popover: #0C3862; --cds-border: #1C4468; --cds-shadow-popover: 0 10px 30px rgba(0,0,0,.4);
+  --cds-text-secondary: #A9C0D6; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --color-bg: #061D35; --color-panel: #08294A; --color-fg: #FCF8F2; --color-fg-muted: #A9C0D6;
+  --color-border-line: #1C4468; --chart-1: #3FA3DF; --chart-2: #C9D6E3; --chart-3: #6B7C8D; --chart-4: #A5D3F0;
+  --cds-surface-popover: #0C3862; --cds-border: #1C4468; --cds-shadow-popover: 0 10px 30px rgba(0,0,0,.4);
+  --cds-text-secondary: #A9C0D6; color-scheme: dark;
+}
+html, body { margin: 0; background: var(--color-bg); color: var(--color-fg); }
+#dash-root { max-width: 1200px; margin: 0 auto; padding-block: 32px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+@media (min-width: 900px) { #dash-root { padding-left: 40px; padding-right: 40px; } }
+.dash-select { font: inherit; font-size: 14px; color: var(--color-fg); background-color: var(--color-panel);
+  border: 1px solid var(--cds-border); border-radius: 10px; padding: 7px 34px 7px 12px; appearance: none; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 17px) 55%, calc(100% - 12px) 55%; background-size: 5px 5px; background-repeat: no-repeat; }
+.dash-skeleton { position: relative; color: transparent !important; }
+.dash-skeleton:empty { background: color-mix(in srgb, var(--color-fg) 6%, transparent); border-radius: 6px; }
+</style>
+</head>
+<body>
+<script>
+// Minimal stand-in for the Claude dashboard runtime, enough to run page.html on its own.
+window.dash = (() => {
+  const store = { respuestas: { status: 'loading', data: [] } };
+  const draws = new Map();
+  const run = (name) => {
+    const fn = draws.get(name);
+    if (!fn) return;
+    document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => {
+      if (el.closest('[hidden]')) return;
+      try { fn(el); } catch (e) { console.error(e); }
+    });
+  };
+  const runAll = () => draws.forEach((_, n) => run(n));
+  return {
+    colors: ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)'],
+    data: (id) => store[id] || { status: 'missing', data: [] },
+    draw: (name, fn) => {
+      if (!fn) return run(name);
+      draws.set(name, typeof fn === 'function' ? fn : (el) => fn.update(el, fn.mount && fn.mount(el)));
+    },
+    onData: (fn) => fn(),
+    setLink: (name) => { try { history.replaceState(null, '', '#' + name); } catch (e) {} },
+    _start: () => {
+      runAll();
+      fetch('data/respuestas.json')
+        .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then((j) => { store.respuestas = { status: 'ok', data: j.rows || j }; })
+        .catch(() => { store.respuestas = { status: 'error', data: [] }; })
+        .finally(runAll);
+    }
+  };
+})();
+</script>
+<div id="dash-root">
+<!-- PAGE -->
+</div>
+<script>dash._start();</script>
+</body>
+</html>
